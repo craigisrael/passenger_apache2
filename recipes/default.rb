@@ -45,11 +45,18 @@ else
   end
 end
 
-gem_package "passenger" do
-  version node[:passenger][:version]
-end
-
 execute "passenger_module" do
-  command 'passenger-install-apache2-module --auto'
+  user "apache"
+  environment 'USER' => 'apache', 'HOME' => '/var/www'
+  cwd '/var/www'
+  ENV.delete_if {|k,v| k =~ /rvm.*/ }
+  command <<-CMD
+    source ~/.bashrc
+    rvm gemset use global
+    gem install passenger -v#{node[:passenger][:version]} --no-ri --no-rdoc
+    export PATH=$PATH:`gem environment | grep 'EXECUTABLE DIRECTORY' | cut -f2 -d: | sed 's/^ *//g'`
+    passenger-install-apache2-module --auto
+  CMD
   creates node[:passenger][:module_path]
 end
+
